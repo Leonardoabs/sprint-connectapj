@@ -25,7 +25,7 @@ export default function Dashboard() {
         {activeTab === "Home" && <HomeTab noticias={noticias} />}
         {activeTab === "Cliente" && <ClienteTab />}
         {activeTab === "Redes" && <RedesTab />}
-        {activeTab === "Tools" && <ToolsTab />}
+        {activeTab === "Notícias" && <ToolsTab />}
       </main>
     </div>
   );

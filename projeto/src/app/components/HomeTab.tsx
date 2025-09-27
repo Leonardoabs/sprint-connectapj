@@ -170,7 +170,7 @@ export default function HomeTab() {
 
     // Cabeçalho
     doc.setFontSize(16);
-    doc.text("📊 Relatório Financeiro - ConnectaPJ Santander", 10, 20);
+    doc.text("Relatório Financeiro - ConnectaPJ Santander", 10, 20);
     doc.setFontSize(12);
     doc.text(`Período: ${nomeMes}`, 10, 30);
 
