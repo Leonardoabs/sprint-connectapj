@@ -68,7 +68,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       ),
     },
     {
-      name: "Tools",
+      name: "Notícias",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
