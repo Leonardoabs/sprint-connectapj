@@ -1,92 +1,148 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { sendMessageToBot } from "../services/chatService";
+
+// Função para extrair o primeiro insight e limpar separadores
+function getFirstInsight(text: string) {
+  const blocks = text.split(/Insight Principal:/).filter(Boolean);
+  if (blocks.length === 0) return null;
+
+  const block = blocks[0];
+  const insightMatch = block.match(/^(.*?)(Evidência nos Dados:)/s);
+  const evidenciaMatch = block.match(/Evidência nos Dados:(.*?)(Implicação de Negócio:)/s);
+  const implicacaoMatch = block.match(/Implicação de Negócio:(.*)/s);
+
+  // Função para limpar --- e espaços extras
+  const cleanText = (str?: string) =>
+    str
+      ? str
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && line !== "---")
+          .join("\n")
+      : "";
+
+  return {
+    insight: cleanText(insightMatch ? insightMatch[1] : ""),
+    evidencia: cleanText(evidenciaMatch ? evidenciaMatch[1] : ""),
+    implicacao: cleanText(implicacaoMatch ? implicacaoMatch[1] : ""),
+  };
+}
 
 type Message = {
   from: "user" | "bot";
   text: string;
 };
 
-const ChatBot: React.FC = () => {
+const ChatBotTab: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false); // ← estado para o "digitando"
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = { from: "user", text: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsTyping(true); // ← começa a simular digitando
+    setIsTyping(true);
 
-    setTimeout(() => {
-      let botReply = "Desculpe, não entendi sua pergunta. 🤔";
-
-      // === 10 IFs de exemplo ===
-      if (input.toLowerCase().includes("oi")) {
-        botReply = "Olá! Como posso ajudar?";
-      } else if (input.toLowerCase().includes("tchau")) {
-        botReply = "Até mais! 👋";
-      } else if (input.toLowerCase().includes("faturaram") && input.toLowerCase().includes("março?")) {
-        botReply = `Claro! Aqui estão as 5 empresas que mais faturaram no mês março:\nCNPJ_08809\nCNPJ_07238\nCNPJ_04734\nCNPJ_02686\nCNPJ_03394`;
-      } else if (input.toLowerCase().includes("faturaram") && input.toLowerCase().includes("abril?")) {
-        botReply = `Claro! Aqui estão as 5 empresas que mais faturaram no mês abril:\nCNPJ_08809\nCNPJ_07238\nCNPJ_04734\nCNPJ_02686\nCNPJ_03394`;
-      } else if (input.toLowerCase().includes("faturaram") && input.toLowerCase().includes("maio?")) {
-        botReply = "Claro! Aqui estão as 5 empresas que mais faturaram no mês maio:\nCNPJ_08809\nCNPJ_07238\nCNPJ_04734\nCNPJ_02686\nCNPJ_03394";
-      } else if (input.toLowerCase().includes("transações") && input.toLowerCase().includes("março?")) {
-        botReply = "O total de transações feitas no mês de março corresponde a 33.387";
-      } else if (input.toLowerCase().includes("transações") && input.toLowerCase().includes("abril?")) {
-        botReply = "O total de transações feitas no mês de abril corresponde a 33.324";
-      } else if (input.toLowerCase().includes("transações") && input.toLowerCase().includes("maio?")) {
-        botReply = "O total de transações feitas no mês de maio corresponde a 33.289";
-      } else if (input.toLowerCase().includes("CNPJ_04734")) {
-        botReply = `Claro! Aqui está a visão da empresa CNPJ_04734\nSetor: Fabricação de papel\nValor Faturado: R$ 199.492.716\nValor Saldo: R$ -5.240.601\nNGC (Nota Gera do Cliente): 4/10`;
-      } else if (input.toLowerCase().includes("5")) {
-        botReply = `Claro! Aqui está o Top 5 empresas que tiveram mais transações:\nCNPJ_02281\nCNPJ_00091\nCNPJ_01235\nCNPJ_01926\nCNPJ_01395`;
-      }
-
-      const botMessage: Message = { from: "bot", text: botReply };
-      setMessages((prev) => [...prev, botMessage]);
-      setIsTyping(false); // ← termina de digitar
-    }, 1000); // ← 1 segundo simulando digitação
+    const reply = await sendMessageToBot(input);
+    const botMessage: Message = { from: "bot", text: reply };
+    setMessages((prev) => [...prev, botMessage]);
+    setIsTyping(false);
   };
 
+  const botImage =
+    "https://png.pngtree.com/png-vector/20250529/ourmid/pngtree-3d-cartoon-woman-with-glasses-and-a-red-shirt-png-image_16406538.png";
+  const userImage =
+    "https://static.vecteezy.com/system/resources/previews/028/238/588/non_2x/old-man-teacher-face-3d-profession-avatars-free-png.png";
+
   return (
-    <div className="flex flex-col w-full max-w-6xl mx-auto border rounded-lg shadow-lg p-4 h-[650px]">
+    <div className="flex flex-col w-full max-w-3xl mx-auto border rounded-2xl shadow-xl p-4 h-[750px] bg-white">
       {/* Área de mensagens */}
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto p-2 space-y-4">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`p-2 rounded-lg max-w-[70%] whitespace-pre-line ${msg.from === "user"
-                ? "bg-red-600 text-white self-end ml-auto"
-                : "bg-gray-200 text-black self-start"
-              }`}
+            className={`flex items-start gap-2 ${msg.from === "user" ? "justify-end" : "justify-start"}`}
           >
-            {msg.text}
+            {msg.from === "bot" && (
+              <img src={botImage} alt="Bot" className="w-10 h-10 rounded-full object-cover shadow" />
+            )}
+
+            <div className="relative p-3 rounded-2xl max-w-[70%] break-words">
+              {msg.from === "user" ? (
+                <div className="bg-red-600 text-white rounded-br-none p-3 shadow-md">{msg.text}</div>
+              ) : (
+                (() => {
+                  const item = getFirstInsight(msg.text);
+                  if (!item) return <div className="text-sm">Nenhum insight disponível</div>;
+
+                  return (
+                    <div className="bg-[#f0f0f0] text-black p-5 rounded-2xl shadow-md space-y-3">
+                      <p className="font-bold text-lg">💡 Insight Principal</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {item.insight.split(/[\.\n]/).map((p, i) => p.trim() && <li key={i}>{p.trim()}</li>)}
+                      </ul>
+
+                      <p className="font-semibold">📊 Evidência nos Dados</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {item.evidencia.split(/[\.\n]/).map((p, i) => p.trim() && <li key={i}>{p.trim()}</li>)}
+                      </ul>
+
+                      <p className="font-semibold">⚠️ Implicação de Negócio</p>
+                      <ul className="list-disc list-inside text-sm">
+                        {item.implicacao.split(/[\.\n]/).map((p, i) => p.trim() && <li key={i}>{p.trim()}</li>)}
+                      </ul>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {msg.from === "user" && (
+              <img src={userImage} alt="Usuário" className="w-10 h-10 rounded-full object-cover shadow" />
+            )}
           </div>
         ))}
 
-        {/* Indicador de digitação */}
         {isTyping && (
-          <div className="flex justify-center items-center p-1 rounded-lg max-w-[5%] bg-gray-200 text-black self-start">
-            •••
+          <div className="flex items-center gap-2">
+            <img
+              src={botImage}
+              alt="Bot"
+              className="w-10 h-10 rounded-full object-cover shadow animate-pulse"
+            />
+            <div className="bg-red-500 p-2 rounded-2xl max-w-[30%] animate-pulse">📊 🔍 Gerando insights...</div>
           </div>
         )}
+
+        <div ref={messagesEndRef}></div>
       </div>
 
-      {/* Input + botão */}
-      <div className="flex mt-2">
+      {/* Input + Botão */}
+      <div className="flex mt-4 gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          className="flex-1 border rounded-l-lg p-2"
-          placeholder="Digite sua mensagem..."
+          placeholder="Digite o CNPJ da empresa..."
+          className="flex-1 p-3 rounded-2xl border-2 border-red-600 bg-white text-black placeholder-black focus:outline-none transition"
         />
         <button
           onClick={handleSend}
-          style={{ cursor: "pointer" }}
-          className="flex ml-2 items-center p-3 bg-gradient-to-br from-red-600/70 to-red-700/80 rounded-xl shadow hover:scale-105 transform transition"
+          className="bg-gradient-to-br from-red-600 to-red-700 text-white px-6 py-3 rounded-2xl shadow-lg hover:scale-105 transition-transform"
         >
           Enviar
         </button>
@@ -95,4 +151,4 @@ const ChatBot: React.FC = () => {
   );
 };
 
-export default ChatBot;
+export default ChatBotTab;
