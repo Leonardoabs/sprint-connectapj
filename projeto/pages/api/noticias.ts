@@ -1,54 +1,73 @@
 // src/pages/api/noticias.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const noticias = [
-    {
-      id: "1",
-      titulo: "Ibovespa fecha em alta com resultados corporativos positivos",
-      descricao: "O índice Bovespa subiu 1,2% impulsionado por grandes empresas que divulgaram lucros acima do esperado.",
-      link: "https://www.infomoney.com.br/mercados/ibovespa-fecha-em-alta/",
-      data: "2025-09-26T10:30:00Z",
-      fonte: "InfoMoney",
-      imagem: null
-    },
-    {
-      id: "2",
-      titulo: "Mercado de câmbio: dólar recua frente ao real",
-      descricao: "O dólar fechou em baixa de 0,8% diante do real, refletindo dados econômicos favoráveis.",
-      link: "https://www.valor.com.br/mercados/dolar-recua-frente-ao-real",
-      data: "2025-09-26T09:45:00Z",
-      fonte: "Valor Econômico",
-      imagem: null
-    },
-    {
-      id: "3",
-      titulo: "Setor de tecnologia impulsiona ações na B3",
-      descricao: "As ações de empresas de tecnologia tiveram alta média de 2% após anúncios de novos investimentos.",
-      link: "https://www.bloomberg.com.br/setor-tecnologia-b3/",
-      data: "2025-09-25T16:00:00Z",
-      fonte: "Bloomberg",
-      imagem: null
-    },
-    {
-      id: "4",
-      titulo: "Taxa de juros mantém estabilidade e impacta investimentos",
-      descricao: "O Banco Central decidiu manter a taxa de juros, trazendo estabilidade para o mercado de crédito.",
-      link: "https://www.g1.globo.com/economia/taxa-de-juros-estabilidade/",
-      data: "2025-09-25T14:30:00Z",
-      fonte: "G1 Economia",
-      imagem: null
-    },
-    {
-      id: "5",
-      titulo: "Empresas de energia renovável registram crescimento expressivo",
-      descricao: "O setor de energia renovável teve valorização significativa nas bolsas brasileiras nesta semana.",
-      link: "https://www.tecmundo.com.br/energia/empresas-renovavel-crescimento.htm",
-      data: "2025-09-24T11:00:00Z",
-      fonte: "TecMundo",
-      imagem: null
-    }
-  ];
+type Noticia = {
+  id: string;
+  titulo: string;
+  descricao: string;
+  link: string;
+  data: string;
+  fonte: string;
+  imagem: string | null;
+};
 
-  res.status(200).json(noticias);
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Noticia[] | { error: string }>
+) {
+  const apiKey = "3e70ababa44645128b2828478b13d3f2";
+  if (!apiKey) {
+    return res.status(500).json({ error: "Chave de API de notícias não configurada." });
+  }
+
+  try {
+    // 1️⃣ Tenta top-headlines (BR, economia)
+    let response = await fetch(
+      `https://newsapi.org/v2/top-headlines?country=br&category=business&apiKey=${apiKey}`,
+      { cache: "no-store" }
+    );
+
+    let data = await response.json();
+
+    // 2️⃣ Se não houver artigos, tenta everything
+    if (!data.articles || data.articles.length === 0) {
+      response = await fetch(
+        `https://newsapi.org/v2/everything?q=mercado+financeiro&language=pt&sortBy=publishedAt&apiKey=${apiKey}`,
+        { cache: "no-store" }
+      );
+      data = await response.json();
+    }
+
+    // 3️⃣ Se ainda não houver artigos, devolve fallback estático
+    if (!data.articles || data.articles.length === 0) {
+      return res.status(200).json([
+        {
+          id: "fallback-1",
+          titulo: "Sem notícias no momento",
+          descricao: "Não encontramos notícias atualizadas na fonte configurada.",
+          link: "#",
+          data: new Date().toISOString(),
+          fonte: "Sistema",
+          imagem: null,
+        },
+      ]);
+    }
+
+    // 4️⃣ Mapeia as notícias reais
+    const noticias: Noticia[] = data.articles.map((art: any, idx: number) => ({
+      id: art.url ?? String(idx),
+      titulo: art.title || "",
+      descricao: art.description || "",
+      link: art.url,
+      data: art.publishedAt,
+      fonte: art.source?.name || "",
+      imagem: art.urlToImage || null,
+    }));
+
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    res.status(200).json(noticias);
+  } catch (err: any) {
+    console.error("❌ Erro ao buscar notícias:", err.message);
+    res.status(500).json({ error: "Falha ao buscar notícias externas." });
+  }
 }
