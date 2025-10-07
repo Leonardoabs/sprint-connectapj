@@ -639,6 +639,7 @@ export default function ClienteTab() {
                   Observa-se um declínio de março até maio.
                 </p>
 
+
                 {/* Gráfico */}
                 <div className="bg-white/10 p-4 rounded-xl flex-1 flex items-center justify-center">
                   <Bar
@@ -854,6 +855,20 @@ export default function ClienteTab() {
                 <p className="text-white/80 text-sm">DS_TRAN, VL</p>
               </div>
 
+              <hr className="border-white/20" />
+
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-1">Cálculo da Maturidade Digital</h2>
+                <p className="text-white/80 text-sm">
+                  A maturidade digital é calculada como a porcentagem de transações realizadas via canais digitais (PIX, TED, Boleto online, etc) sobre o total de transações do cliente:
+                </p>
+                <pre className="text-white/70 text-xs bg-white/10 rounded p-2 mt-2">
+                  Maturidade Digital (%) = (Transações Digitais / Total de Transações) * 100
+                </pre>
+                <p className="text-white/80 text-sm mt-1">
+                  Exemplo: 40 PIX + 25 TED + 20 Boleto + 7 Sistêmico = 92% digital
+                </p>
+              </div>
               <hr className="border-white/20" />
 
               {/* Métrica de transações */}
