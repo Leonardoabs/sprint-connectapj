@@ -52,28 +52,19 @@ export default function HomeTab() {
   const [topRamos, setTopRamos] = useState<{ ramo: string; valor: number }[]>([]);
   const [topCNPJs, setTopCNPJs] = useState<{ cnpj: string; valor: number }[]>([]);
 
-  // Meses para o gráfico
   const mesesOptions = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio"];
-  // Meses para o filtro (removendo janeiro e fevereiro)
   const mesesOptionsFiltro = ["Março", "Abril", "Maio"];
 
   const atualizarKPIs = (clientes: Cliente[], transacoes: Transacao[], mes: number | "all") => {
-    // Filtragem de clientes para Top Ramos e Top CNPJs
+    // Filtrar clientes e transações pelo mês selecionado
     const clientesFiltrados =
       mes === "all"
-        ? clientes.filter((c) => {
-            const m = excelSerialToDate(c.DT_REFE).getMonth();
-            return m >= 2 && m <= 4; // Março a Maio
-          })
+        ? clientes
         : clientes.filter((c) => excelSerialToDate(c.DT_REFE).getMonth() === mes);
 
-    // Filtragem de transações para KPIs
     const transacoesFiltradas =
       mes === "all"
-        ? transacoes.filter((t) => {
-            const m = excelSerialToDate(t.DT_REFE).getMonth();
-            return m >= 2 && m <= 4; // Março a Maio
-          })
+        ? transacoes
         : transacoes.filter((t) => excelSerialToDate(t.DT_REFE).getMonth() === mes);
 
     // KPIs
@@ -86,15 +77,16 @@ export default function HomeTab() {
     setFluxoCaixa(transacoesFiltradas.reduce((a, t) => a + t.VL, 0));
     setTotalTransacoes(transacoesFiltradas.length);
 
-    // Receita acumulada por mês (janeiro a maio)
+    // Receita por mês (sempre janeiro a maio, mesmo que filtrado)
     const meses = [0, 0, 0, 0, 0];
-    transacoes.forEach((t) => {
+    const transacoesParaGrafico = mes === "all" ? transacoes : transacoesFiltradas;
+    transacoesParaGrafico.forEach((t) => {
       const m = excelSerialToDate(t.DT_REFE).getMonth();
       if (m >= 0 && m < 5) meses[m] += t.VL;
     });
     setReceitaPorMes(meses);
 
-    // Top ramos
+    // Top 3 Ramos
     const receitaPorRamo: Record<string, number> = {};
     clientesFiltrados.forEach((c) => {
       receitaPorRamo[c.DS_CNAE] = (receitaPorRamo[c.DS_CNAE] || 0) + c.VL_FATU;
@@ -105,7 +97,7 @@ export default function HomeTab() {
       .map(([ramo, valor]) => ({ ramo, valor }));
     setTopRamos(topR);
 
-    // Top empresas
+    // Top 5 CNPJs
     const receitaPorCNPJ: Record<string, number> = {};
     clientesFiltrados.forEach((c) => {
       receitaPorCNPJ[c.ID] = (receitaPorCNPJ[c.ID] || 0) + c.VL_FATU;
@@ -117,17 +109,23 @@ export default function HomeTab() {
     setTopCNPJs(topC);
   };
 
+  
+
   useEffect(() => {
     async function carregarDados() {
       try {
-        const res = await fetch("/api/dados");
-        const { clientes, transacoes } = await res.json();
+        const clientesRes = await fetch("/clientes.json");
+        const transacoesRes = await fetch("/transacoes.json");
+
+        const clientes = await clientesRes.json();
+        const transacoes = await transacoesRes.json();
+
         setClientes(clientes);
         setTransacoes(transacoes);
 
-        atualizarKPIs(clientes, transacoes, "all"); // inicia com "Todos"
+        atualizarKPIs(clientes, transacoes, "all");
       } catch (err) {
-        console.error("Erro ao carregar dados da API:", err);
+        console.error("Erro ao carregar dados locais:", err);
       }
     }
     carregarDados();
@@ -140,47 +138,26 @@ export default function HomeTab() {
   }, [mesSelecionado]);
 
   const cards = [
-    {
-      title: "Receita Média",
-      value: `R$ ${receitaMedia.toLocaleString()}`,
-      icon: <FaDollarSign className="text-xl" />,
-    },
-    {
-      title: "Transações",
-      value: totalTransacoes.toLocaleString(),
-      icon: <FaExchangeAlt className="text-xl" />,
-    },
-    {
-      title: "Fluxo de Caixa",
-      value: `R$ ${fluxoCaixa.toLocaleString()}`,
-      icon: <FaCashRegister className="text-xl" />,
-    },
-    {
-      title: "Clientes Ativos",
-      value: clientesAtivos.toLocaleString(),
-      icon: <FaUsers className="text-xl" />,
-    },
+    { title: "Receita Média", value: `R$ ${receitaMedia.toLocaleString()}`, icon: <FaDollarSign className="text-xl" /> },
+    { title: "Transações", value: totalTransacoes.toLocaleString(), icon: <FaExchangeAlt className="text-xl" /> },
+    { title: "Fluxo de Caixa", value: `R$ ${fluxoCaixa.toLocaleString()}`, icon: <FaCashRegister className="text-xl" /> },
+    { title: "Clientes Ativos", value: clientesAtivos.toLocaleString(), icon: <FaUsers className="text-xl" /> },
   ];
 
-  // 🔴 Gerar Relatório em PDF
   const gerarRelatorio = () => {
     const doc = new jsPDF();
-    const nomeMes =
-      mesSelecionado === "all" ? "Todos os meses" : mesesOptions[mesSelecionado];
+    const nomeMes = mesSelecionado === "all" ? "Todos os meses" : mesesOptions[mesSelecionado];
 
-    // Cabeçalho
     doc.setFontSize(16);
     doc.text("Relatório Financeiro - ConnectaPJ Santander", 10, 20);
     doc.setFontSize(12);
     doc.text(`Período: ${nomeMes}`, 10, 30);
 
-    // KPIs
     doc.text(`Receita Média: R$ ${receitaMedia.toLocaleString()}`, 10, 50);
     doc.text(`Fluxo de Caixa: R$ ${fluxoCaixa.toLocaleString()}`, 10, 60);
     doc.text(`Transações: ${totalTransacoes.toLocaleString()}`, 10, 70);
     doc.text(`Clientes Ativos: ${clientesAtivos.toLocaleString()}`, 10, 80);
 
-    // Top Ramos
     if (topRamos.length) {
       doc.text("Top 3 Ramos:", 10, 100);
       topRamos.forEach((r, i) => {
@@ -188,7 +165,6 @@ export default function HomeTab() {
       });
     }
 
-    // Top Empresas
     if (topCNPJs.length) {
       doc.text("Top 5 Empresas:", 10, 150);
       topCNPJs.forEach((c, i) => {
@@ -196,37 +172,26 @@ export default function HomeTab() {
       });
     }
 
-    // Salvar PDF
     doc.save(`relatorio_${nomeMes}.pdf`);
   };
 
   return (
     <div className="space-y-6 px-6 md:px-12 py-6">
-      {/* Cabeçalho */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-red-600">
-          ConnectaPJ - Painel Financeiro Santander
-        </h1>
-        <p className="mt-1 text-gray-400 text-sm md:text-base">
-          Análise integrada de indicadores financeiros de clientes do Santander
-        </p>
+        <h1 className="text-3xl font-bold text-red-600">ConnectaPJ - Painel Financeiro Santander</h1>
+        <p className="mt-1 text-gray-400 text-sm md:text-base">Análise integrada de indicadores financeiros de clientes do Santander</p>
         <hr className="mt-3 border-gray-700 w-1/2 mx-auto" />
       </div>
 
-      {/* Filtro por mês + botão relatório */}
       <div className="flex justify-between items-center">
         <select
           className="bg-gray-800 text-white px-3 py-1 rounded-md text-sm"
           value={mesSelecionado}
-          onChange={(e) =>
-            setMesSelecionado(e.target.value === "all" ? "all" : Number(e.target.value))
-          }
+          onChange={(e) => setMesSelecionado(e.target.value === "all" ? "all" : Number(e.target.value))}
         >
           <option value="all">Todos</option>
           {mesesOptionsFiltro.map((mes, i) => (
-            <option key={i} value={i + 2}>
-              {mes}
-            </option>
+            <option key={i} value={i + 2}>{mes}</option>
           ))}
         </select>
 
@@ -238,16 +203,10 @@ export default function HomeTab() {
         </button>
       </div>
 
-      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((card) => (
-          <div
-            key={card.title}
-            className="flex items-center p-3 bg-gradient-to-br from-red-600/70 to-red-700/80 rounded-xl shadow hover:scale-105 transform transition"
-          >
-            <div className="p-3 bg-red-800 rounded-full flex items-center justify-center mr-3">
-              {card.icon}
-            </div>
+          <div key={card.title} className="flex items-center p-3 bg-gradient-to-br from-red-600/70 to-red-700/80 rounded-xl shadow hover:scale-105 transform transition">
+            <div className="p-3 bg-red-800 rounded-full flex items-center justify-center mr-3">{card.icon}</div>
             <div>
               <p className="text-gray-200 font-medium text-sm">{card.title}</p>
               <p className="text-white text-lg font-bold mt-1">{card.value}</p>
@@ -256,97 +215,48 @@ export default function HomeTab() {
         ))}
       </div>
 
-      {/* Gráfico de Evolução Mensal da Receita */}
       <div className="bg-gray-900 p-4 rounded-xl shadow-md h-64">
         <h3 className="text-white font-bold mb-2">Evolução Mensal da Receita</h3>
         <Line
           data={{
             labels: mesesOptions,
-            datasets: [
-              {
-                label: "Receita",
-                data: receitaPorMes,
-                borderColor: "#ec0000",
-                backgroundColor: "rgba(236,0,0,0.2)",
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-              },
-            ],
+            datasets: [{ label: "Receita", data: receitaPorMes, borderColor: "#ec0000", backgroundColor: "rgba(236,0,0,0.2)", tension: 0.4, fill: true, pointRadius: 4 }],
           }}
           options={{
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { labels: { color: "#fff" } } },
-            scales: {
-              x: { ticks: { color: "#fff" }, grid: { color: "#444" } },
-              y: { ticks: { color: "#fff" }, grid: { color: "#444" } },
-            },
+            scales: { x: { ticks: { color: "#fff" }, grid: { color: "#444" } }, y: { ticks: { color: "#fff" }, grid: { color: "#444" } } },
           }}
         />
       </div>
 
-      {/* Top Ramos e Top CNPJs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top 3 Ramos */}
         <div className="bg-gray-900 p-4 rounded-xl shadow-md h-64">
-          <h3 className="text-white font-bold mb-2">
-            Top 3 Ramos ({mesSelecionado === "all" ? "Todos" : mesesOptions[mesSelecionado]})
-          </h3>
+          <h3 className="text-white font-bold mb-2">Top 3 Ramos ({mesSelecionado === "all" ? "Todos" : mesesOptions[mesSelecionado]})</h3>
           <Bar
             data={{
               labels: topRamos.map((r) => r.ramo),
-              datasets: [
-                {
-                  label: "Receita",
-                  data: topRamos.map((r) => r.valor),
-                  backgroundColor: topRamos.map(
-                    (_, i) => `rgba(236,0,0,${0.7 - i * 0.15})`
-                  ),
-                  borderRadius: 6,
-                },
-              ],
+              datasets: [{ label: "Receita", data: topRamos.map((r) => r.valor), backgroundColor: topRamos.map((_, i) => `rgba(236,0,0,${0.7 - i * 0.15})`), borderRadius: 6 }],
             }}
             options={{
               responsive: true,
               maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  backgroundColor: "#ec0000",
-                  titleColor: "#fff",
-                  bodyColor: "#fff",
-                },
-              },
-              scales: {
-                x: { ticks: { color: "#fff" }, grid: { color: "#444" } },
-                y: { ticks: { color: "#fff" }, grid: { color: "#444" } },
-              },
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: "#ec0000", titleColor: "#fff", bodyColor: "#fff" } },
+              scales: { x: { ticks: { color: "#fff" }, grid: { color: "#444" } }, y: { ticks: { color: "#fff" }, grid: { color: "#444" } } },
             }}
           />
         </div>
 
-        {/* Top 5 CNPJs */}
         <div className="bg-gray-900 p-4 rounded-xl shadow-md overflow-auto max-h-64">
-          <h3 className="text-white font-bold mb-2">
-            Top 5 Empresas ({mesSelecionado === "all" ? "Todos" : mesesOptions[mesSelecionado]})
-          </h3>
+          <h3 className="text-white font-bold mb-2">Top 5 Empresas ({mesSelecionado === "all" ? "Todos" : mesesOptions[mesSelecionado]})</h3>
           <ul className="text-gray-200 text-sm">
-            {topCNPJs.length ? (
-              topCNPJs.map((c, i) => (
-                <li
-                  key={i}
-                  className="py-2 border-b border-gray-700 flex justify-between items-center hover:bg-gray-800 transition rounded px-2"
-                >
-                  <span className="truncate">{c.cnpj}</span>
-                  <span className="font-semibold">
-                    R$ {c.valor.toLocaleString()}
-                  </span>
-                </li>
-              ))
-            ) : (
-              <li className="py-2 text-gray-400">Nenhum dado neste mês</li>
-            )}
+            {topCNPJs.length ? topCNPJs.map((c, i) => (
+              <li key={i} className="py-2 border-b border-gray-700 flex justify-between items-center hover:bg-gray-800 transition rounded px-2">
+                <span className="truncate">{c.cnpj}</span>
+                <span className="font-semibold">R$ {c.valor.toLocaleString()}</span>
+              </li>
+            )) : <li className="py-2 text-gray-400">Nenhum dado neste mês</li>}
           </ul>
         </div>
       </div>

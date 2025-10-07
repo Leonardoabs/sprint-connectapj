@@ -112,19 +112,24 @@ export default function ClienteTab() {
   const [mensagens, setMensagens] = useState<{user: string, ia: string}[]>([]);
   const [inputMsg, setInputMsg] = useState("");
 
-  // 🔹 Carrega dados da API
+  // 🔹 Carrega dados
   useEffect(() => {
     async function carregarDados() {
       try {
-        const res = await fetch("/api/dados");
-        const data = await res.json();
+        const [resClientes, resTransacoes] = await Promise.all([
+          fetch("/clientes.json"),
+          fetch("/transacoes.json"),
+        ]);
 
-        const clientesFormatados = data.clientes.map((c: Cliente) => ({
+        const clientesJson = await resClientes.json();
+        const transacoesJson = await resTransacoes.json();
+
+        const clientesFormatados = clientesJson.map((c: Cliente) => ({
           ...c,
           DT_REFE: typeof c.DT_REFE === "number" ? excelDateToJSDate(c.DT_REFE) : String(c.DT_REFE),
         }));
 
-        const transacoesFormatadas = data.transacoes.map((t: Transacao) => ({
+        const transacoesFormatadas = transacoesJson.map((t: Transacao) => ({
           ...t,
           DT_REFE: typeof t.DT_REFE === "number" ? excelDateToJSDate(t.DT_REFE) : String(t.DT_REFE),
         }));
@@ -137,6 +142,7 @@ export default function ClienteTab() {
     }
     carregarDados();
   }, []);
+
 
   // 🔹 Busca cliente pelo CNPJ
   const buscarCliente = () => {
