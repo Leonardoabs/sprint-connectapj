@@ -5,6 +5,7 @@ import autoTable from "jspdf-autotable";
 import { X, Trophy, TrendingUp, TrendingDown } from "lucide-react";
 import { FaDollarSign, FaExchangeAlt, FaCashRegister } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -92,42 +93,90 @@ export default function RedesTab() {
     setDetalhesTransacoes(transacoes.filter((t) => t.ID_PGTO === id || t.ID_RCBE === id));
   };
 
+
   const gerarRelatorio = () => {
     if (!clienteSelecionado) return;
     const cliente = clientes.find((c) => c.id === clienteSelecionado);
     if (!cliente) return;
 
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.setTextColor(180, 0, 0);
-    doc.text(`Relatório do Cliente: ${clienteSelecionado}`, 14, 20);
+    const doc = new jsPDF("p", "mm", "a4");
+    
 
+    // === Cabeçalho ===
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const headerHeight = 25;
+    const redColor: [number, number, number] = [180, 0, 0];
+
+    // Fundo vermelho no topo
+    doc.setFillColor(redColor[0], redColor[1], redColor[2]);
+    doc.rect(0, 0, pageWidth, headerHeight, "F");
+
+    // Logo Santander (ajuste tamanho conforme a imagem)
+    // doc.addImage('url("/santander_logo.png")', "PNG", 14, 5, 30, 12);
+
+    // Título principal
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Relatório do Cliente: ${clienteSelecionado}`, 50, 15);
+
+    // === Seção de Informações Gerais ===
     doc.setFontSize(12);
-    doc.setTextColor(50);
-    doc.text(`Total Recebido: R$ ${(cliente.recebido ?? 0).toLocaleString()}`, 14, 30);
-    doc.text(`Total Pago: R$ ${(cliente.pago ?? 0).toLocaleString()}`, 14, 38);
+    doc.setTextColor(60);
+    doc.text("Resumo Financeiro", 14, 40);
 
+    doc.setFontSize(11);
+    doc.text(`Total Recebido: R$ ${(cliente.recebido ?? 0).toLocaleString()}`, 14, 48);
+    doc.text(`Total Pago: R$ ${(cliente.pago ?? 0).toLocaleString()}`, 14, 56);
+
+    // === Tabela de Transações ===
     const body = detalhesTransacoes.map((t) => [
       t.ID_PGTO,
       t.ID_RCBE,
       `R$ ${t.VL.toLocaleString()}`,
-      t.ID_RCBE === clienteSelecionado ? `R$ ${t.VL.toLocaleString()}` : "0",
-      t.ID_PGTO === clienteSelecionado ? `R$ ${t.VL.toLocaleString()}` : "0",
+      t.ID_RCBE === clienteSelecionado ? `R$ ${t.VL.toLocaleString()}` : "-",
+      t.ID_PGTO === clienteSelecionado ? `R$ ${t.VL.toLocaleString()}` : "-",
     ]);
 
     autoTable(doc, {
-      startY: 48,
+      startY: 65,
       head: [["Pagador", "Recebedor", "Valor", "Recebido", "Pago"]],
       body,
-      headStyles: { fillColor: [180, 0, 0], textColor: 255, fontStyle: "bold" },
-      styles: { textColor: 0, fontSize: 10, cellPadding: 3, fillColor: [245, 245, 245] },
-      columnStyles: {
-        3: { fillColor: [0, 150, 0], textColor: 255 },
-        4: { fillColor: [0, 123, 255], textColor: 255 },
+      headStyles: {
+        fillColor: redColor,
+        textColor: 255,
+        fontStyle: "bold",
+        halign: "center",
       },
-      margin: { top: 48, left: 14, right: 14 },
+      styles: {
+        fontSize: 10,
+        cellPadding: 4,
+        textColor: 40,
+        lineWidth: 0.1,
+      },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 30 },
+        2: { halign: "right" },
+        3: { halign: "right", textColor: [0, 150, 0] },
+        4: { halign: "right", textColor: [0, 100, 200] },
+      },
+      margin: { left: 14, right: 14 },
     });
 
+    // === Rodapé ===
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const dataAtual = new Date().toLocaleDateString("pt-BR");
+
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(
+      `Gerado automaticamente pelo sistema ConnectaPJ Santander | ${dataAtual}`,
+      14,
+      pageHeight - 10
+    );
+
+    // === Salvar ===
     doc.save(`relatorio_${clienteSelecionado}.pdf`);
   };
 
@@ -337,11 +386,10 @@ export default function RedesTab() {
                 <FaExchangeAlt className="text-yellow-400 mb-2" size={24} />
                 <span className="text-gray-300 text-sm">Saldo Líquido</span>
                 <span
-                  className={`font-bold text-lg ${
-                    (clienteDetalhes.recebido ?? 0) - (clienteDetalhes.pago ?? 0) >= 0
+                  className={`font-bold text-lg ${(clienteDetalhes.recebido ?? 0) - (clienteDetalhes.pago ?? 0) >= 0
                       ? "text-green-400"
                       : "text-red-400"
-                  }`}
+                    }`}
                 >
                   R$ {((clienteDetalhes.recebido ?? 0) - (clienteDetalhes.pago ?? 0)).toLocaleString()}
                 </span>
