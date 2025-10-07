@@ -5,7 +5,8 @@ import Sidebar from "@/app/components/Sidebar";
 import HomeTab from "@/app/components/HomeTab";
 import ClienteTab from "@/app/components/ClienteTab";
 import RedesTab from "@/app/components/RedesTab";
-import ToolsTab from "@/app/components/ToolsTab";
+import NoticiasTab from "@/app/components/NoticiasTab";
+import ChatBotTab from "@/app/components/ChatBotTab";
 import { getFinanceNews } from "@/app/services/newsService";
 
 export default function Dashboard() {
@@ -25,7 +26,8 @@ export default function Dashboard() {
         {activeTab === "Home" && <HomeTab noticias={noticias} />}
         {activeTab === "Cliente" && <ClienteTab />}
         {activeTab === "Redes" && <RedesTab />}
-        {activeTab === "Notícias" && <ToolsTab />}
+        {activeTab === "Notícias" && <NoticiasTab />}
+        {activeTab === "Chat" && <ChatBotTab />}
       </main>
     </div>
   );

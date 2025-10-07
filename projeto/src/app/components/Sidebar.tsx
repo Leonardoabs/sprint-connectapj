@@ -81,6 +81,19 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         </svg>
       ),
     },
+    {
+      name: "Chat",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="size-6">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" />
+        </svg>
+      ),
+    }
   ];
 
   return (
@@ -105,9 +118,8 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-red-700 p-4 flex flex-col transition-transform shadow-xl z-50 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 h-full w-64 bg-red-700 p-4 flex flex-col transition-transform shadow-xl z-50 ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {/* Cabeçalho com logo e título */}
         <div className="flex flex-col mb-8">
@@ -139,11 +151,10 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <button
               key={tab.name}
               onClick={() => setActiveTab(tab.name)}
-              className={`flex items-center gap-3 px-4 py-2 rounded-lg w-full transition relative ${
-                activeTab === tab.name
-                  ? "bg-gray-200 text-red-700 font-semibold shadow-inner"
-                  : "text-white hover:bg-red-600 hover:shadow-md"
-              }`}
+              className={`flex items-center gap-3 px-4 py-2 rounded-lg w-full transition relative ${activeTab === tab.name
+                ? "bg-gray-200 text-red-700 font-semibold shadow-inner"
+                : "text-white hover:bg-red-600 hover:shadow-md"
+                }`}
             >
               {/* Barra lateral vermelha para aba ativa */}
               {activeTab === tab.name && (
