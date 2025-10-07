@@ -13,7 +13,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+// @ts-ignore
 import jsPDF from "jspdf";
+// @ts-ignore
+import autoTable from "jspdf-autotable";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -59,12 +62,18 @@ export default function HomeTab() {
     // Filtrar clientes e transações pelo mês selecionado
     const clientesFiltrados =
       mes === "all"
-        ? clientes
+        ? clientes.filter((c) => {
+          const m = excelSerialToDate(c.DT_REFE).getMonth();
+          return m >= 2 && m <= 4; // Março a Maio
+        })
         : clientes.filter((c) => excelSerialToDate(c.DT_REFE).getMonth() === mes);
 
     const transacoesFiltradas =
       mes === "all"
-        ? transacoes
+        ? transacoes.filter((t) => {
+          const m = excelSerialToDate(t.DT_REFE).getMonth();
+          return m >= 2 && m <= 4; // Março a Maio
+        })
         : transacoes.filter((t) => excelSerialToDate(t.DT_REFE).getMonth() === mes);
 
     // KPIs
@@ -144,36 +153,142 @@ export default function HomeTab() {
     { title: "Clientes Ativos", value: clientesAtivos.toLocaleString(), icon: <FaUsers className="text-xl" /> },
   ];
 
+  // 🔴 Gerar Relatório em PDF
+
+
   const gerarRelatorio = () => {
-    const doc = new jsPDF();
-    const nomeMes = mesSelecionado === "all" ? "Todos os meses" : mesesOptions[mesSelecionado];
+    const doc = new jsPDF("p", "mm", "a4");
 
-    doc.setFontSize(16);
-    doc.text("Relatório Financeiro - ConnectaPJ Santander", 10, 20);
+    const nomeMes =
+      mesSelecionado === "all" ? "Todos os meses" : mesesOptions[mesSelecionado];
+
+    const corPrimaria: [number, number, number] = [196, 12, 12];
+    // vermelho Santander
+    const margem = 15;
+    let y = 20;
+
+    // === Cabeçalho ===
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...corPrimaria);
+    doc.text("Relatório Financeiro - ConnectaPJ Santander", margem, y);
+    y += 10;
+
     doc.setFontSize(12);
-    doc.text(`Período: ${nomeMes}`, 10, 30);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Período: ${nomeMes}`, margem, y);
+    y += 8;
 
-    doc.text(`Receita Média: R$ ${receitaMedia.toLocaleString()}`, 10, 50);
-    doc.text(`Fluxo de Caixa: R$ ${fluxoCaixa.toLocaleString()}`, 10, 60);
-    doc.text(`Transações: ${totalTransacoes.toLocaleString()}`, 10, 70);
-    doc.text(`Clientes Ativos: ${clientesAtivos.toLocaleString()}`, 10, 80);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margem, y, 195, y);
+    y += 10;
 
+    // === KPIs ===
+    const kpis = [
+      ["Receita Média", `R$ ${receitaMedia.toLocaleString()}`],
+      ["Fluxo de Caixa", `R$ ${fluxoCaixa.toLocaleString()}`],
+      ["Transações", totalTransacoes.toLocaleString()],
+      ["Clientes Ativos", clientesAtivos.toLocaleString()],
+    ];
+
+    doc.setFontSize(14);
+    doc.setTextColor(...corPrimaria);
+    doc.text("Indicadores Financeiros", margem, y);
+    y += 8;
+
+    // Cabeçalho da tabela
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(...corPrimaria);
+    doc.rect(margem, y, 180, 8, "F");
+    doc.text("Indicador", margem + 4, y + 6);
+    doc.text("Valor", 160, y + 6);
+    y += 10;
+
+    // Linhas da tabela
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    kpis.forEach(([nome, valor], i) => {
+      doc.setDrawColor(220);
+      doc.rect(margem, y, 180, 8);
+      doc.text(nome, margem + 4, y + 6);
+      doc.text(valor, 160, y + 6, { align: "right" });
+      y += 8;
+    });
+
+    y += 12;
+
+    // === Top 3 Ramos ===
     if (topRamos.length) {
-      doc.text("Top 3 Ramos:", 10, 100);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...corPrimaria);
+      doc.text("Top 3 Ramos de Atividade", margem, y);
+      y += 8;
+
+      // Cabeçalho
+      doc.setFillColor(...corPrimaria);
+      doc.setTextColor(255, 255, 255);
+      doc.rect(margem, y, 180, 8, "F");
+      doc.text("#", margem + 4, y + 6);
+      doc.text("Ramo", margem + 20, y + 6);
+      doc.text("Valor", 160, y + 6);
+      y += 10;
+
+      // Corpo
+      doc.setTextColor(0, 0, 0);
       topRamos.forEach((r, i) => {
-        doc.text(`${i + 1}. ${r.ramo} - R$ ${r.valor.toLocaleString()}`, 15, 110 + i * 10);
+        doc.rect(margem, y, 180, 8);
+        doc.text(String(i + 1), margem + 4, y + 6);
+        doc.text(r.ramo, margem + 20, y + 6);
+        doc.text(`R$ ${r.valor.toLocaleString()}`, 160, y + 6, { align: "right" });
+        y += 8;
+      });
+
+      y += 12;
+    }
+
+    // === Top 5 Empresas ===
+    if (topCNPJs.length) {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...corPrimaria);
+      doc.text("Top 5 Empresas", margem, y);
+      y += 8;
+
+      // Cabeçalho
+      doc.setFillColor(...corPrimaria);
+      doc.setTextColor(255, 255, 255);
+      doc.rect(margem, y, 180, 8, "F");
+      doc.text("#", margem + 4, y + 6);
+      doc.text("CNPJ", margem + 20, y + 6);
+      doc.text("Valor", 160, y + 6);
+      y += 10;
+
+      // Corpo
+      doc.setTextColor(0, 0, 0);
+      topCNPJs.forEach((c, i) => {
+        doc.rect(margem, y, 180, 8);
+        doc.text(String(i + 1), margem + 4, y + 6);
+        doc.text(c.cnpj, margem + 20, y + 6);
+        doc.text(`R$ ${c.valor.toLocaleString()}`, 160, y + 6, { align: "right" });
+        y += 8;
       });
     }
 
-    if (topCNPJs.length) {
-      doc.text("Top 5 Empresas:", 10, 150);
-      topCNPJs.forEach((c, i) => {
-        doc.text(`${i + 1}. ${c.cnpj} - R$ ${c.valor.toLocaleString()}`, 15, 160 + i * 10);
-      });
-    }
+    // === Rodapé ===
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(
+      "Relatório gerado automaticamente pelo sistema ConnectaPJ Santander",
+      margem,
+      285
+    );
 
     doc.save(`relatorio_${nomeMes}.pdf`);
   };
+
+
 
   return (
     <div className="space-y-6 px-6 md:px-12 py-6">
