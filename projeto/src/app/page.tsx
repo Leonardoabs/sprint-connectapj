@@ -115,7 +115,7 @@ export default function LoginDashboard() {
         {activeTab === "Cliente" && <ClienteTab />}
         {activeTab === "Redes" && <RedesTab />}
         {activeTab === "Notícias" && <NoticiasTab />}
-        {activeTab === "Chat" && <ChatBotTab />}
+        {activeTab === "Assistente virtual" && <ChatBotTab />}
       </main>
     </div>
   );
