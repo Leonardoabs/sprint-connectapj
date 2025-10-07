@@ -93,8 +93,6 @@ Informações gerais:
 
 Transações recentes (últimas 50):
 {transacoes_empresa.tail(50).to_string(index=False)}
-
-RETORNE UM GRAFICO DE LINHAS COM A TENDENCIA DE SALDO COM BASE NOS MESES
 """
 
     try:
